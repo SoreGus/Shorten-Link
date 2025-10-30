@@ -2,8 +2,6 @@
 //  LinkRepository.swift
 //  Link
 //
-//  Created by Gustavo Soré on 29/10/25.
-//
 
 enum LinkRepositoryError: Error {
     case notImplemented

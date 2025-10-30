@@ -2,8 +2,6 @@
 //  DisplayLink.swift
 //  Link
 //
-//  Created by Gustavo Soré on 29/10/25.
-//
 
 #if canImport(UIKit)
 import UIKit
@@ -28,16 +26,5 @@ struct DisplayLink: Sendable {
         icon: DisplayIcon
     ) -> Self {
         return .init(link: link, url: url, icon: icon)
-    }
-}
-
-extension DisplayLink {
-    static func loading(from stored: Link) -> DisplayLink {
-        // Adapte aos campos reais do seu modelo
-        DisplayLink(
-            link: stored,
-            url: "https://…",
-            icon: nil
-        )
     }
 }

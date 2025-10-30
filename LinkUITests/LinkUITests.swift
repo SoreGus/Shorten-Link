@@ -2,8 +2,6 @@
 //  LinkUITests.swift
 //  LinkUITests
 //
-//  Created by Gustavo Soré on 29/10/25.
-//
 
 import XCTest
 

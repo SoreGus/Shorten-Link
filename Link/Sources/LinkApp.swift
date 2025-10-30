@@ -1,9 +1,7 @@
 //
 //  LinkApp.swift
 //  Link
-//
-//  Created by Gustavo Soré on 29/10/25.
-//
+//LinkDisplayTests
 
 import SwiftUI
 import SwiftData

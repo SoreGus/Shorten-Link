@@ -2,8 +2,6 @@
 //  DisplayListProtocol.swift
 //  Link
 //
-//  Created by Gustavo Soré on 29/10/25.
-//
 
 enum DisplayListError: Error {
     case notImplemented

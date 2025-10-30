@@ -2,8 +2,6 @@
 //  LinkService+Display.swift
 //  Link
 //
-//  Created by Gustavo Soré on 29/10/25.
-//
 
 import Foundation
 #if canImport(UIKit)
@@ -15,17 +13,13 @@ import SwiftUI
 
 extension LinkService: DisplayListProtocol {
 
-    /// Emite para cada link salvo:
-    /// 1) uma emissão parcial (icon == nil)
-    /// 2) se o favicon for obtido, uma segunda emissão com imagem
     @MainActor
     func loadAllDisplayLinksStream() -> AsyncThrowingStream<DisplayLink, Error> {
         AsyncThrowingStream<DisplayLink, Error>(
             DisplayLink.self,
             bufferingPolicy: .unbounded
         ) { continuation in
-            Task { // não precisa @MainActor aqui; chamadas @MainActor fazem hop por await
-                // 1) Carrega todos os links persistidos
+            Task {
                 let storedLinks: [Link]
                 do {
                     storedLinks = try await self.loadAll()
@@ -39,7 +33,6 @@ extension LinkService: DisplayListProtocol {
 
                 let iconSize = 64
 
-                // Capturas @Sendable
                 let loadServerID: @Sendable (String) async throws -> DisplayLink? = { [weak self] id in
                     guard let self else { return nil }
                     return try await self.load(serverID: id) // @MainActor; hop automático
@@ -50,34 +43,27 @@ extension LinkService: DisplayListProtocol {
                     return await self.fetchFaviconData(siteURL: url, iconSize)
                 }
 
-                // 2) Para cada Link salvo, resolve no servidor e tenta favicon em paralelo
                 await withTaskGroup(of: Void.self) { group in
                     for stored in storedLinks {
                         if Task.isCancelled { break }
                         group.addTask {
                             do {
-                                // resolve servidor → DisplayLink (necessário para ter a `url`)
                                 guard let dl = try await loadServerID(stored.serverID) else { return }
 
-                                // (1) Emite parcial (icon == nil)
                                 continuation.yield(dl)
 
-                                // (2) Se conseguir favicon, emite versão com imagem
                                 if let url = URL(string: dl.url),
                                    let data = await fetchFaviconSoft(url),
                                    let image = PlatformImage(data: data) {
-                                    continuation.yield(dl.withImage(icon: .platformImage(image)))
+                                    await continuation.yield(dl.withImage(icon: .platformImage(image)))
                                 }
-                                // Se não conseguir favicon: não emite novamente (fica nil)
 
                             } catch {
-                                // falha pontual (rede/decoding/etc.) não derruba o stream
                                 return
                             }
                         }
                     }
 
-                    // Aguarda subtarefas
                     for await _ in group {
                         if Task.isCancelled { break }
                     }
@@ -88,7 +74,6 @@ extension LinkService: DisplayListProtocol {
         }
     }
 
-    /// Versão "soft": nunca lança — retorna `nil` em qualquer falha.
     func fetchFaviconData(siteURL: URL, _ size: Int = 64) async -> Data? {
         var comps = URLComponents(string: "https://t0.gstatic.com/faviconV2")!
         comps.queryItems = [
