@@ -237,8 +237,7 @@ extension LinkViewModel {
     private func isLikelyValidHost(_ host: String) -> Bool {
         let h = host.lowercased()
         if h == "localhost" { return true }
-        if h.contains(":") { return true } // IPv6 literal
-        // exige ao menos um ponto (ex.: example.com)
+        if h.contains(":") { return true }
         return h.split(separator: ".").count >= 2
     }
 }

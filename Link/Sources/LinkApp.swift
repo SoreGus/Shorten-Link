@@ -8,24 +8,20 @@ import SwiftData
 
 @main
 struct LinkApp: App {
-    @State private var container: ModelContainer
-    @State private var service: LinkService
+    @State private var viewModel: LinkViewModel
 
     init() {
         do {
-            let config = ModelConfiguration()
-            let container = try ModelContainer(for: StoredLink.self, configurations: config)
-            _container = State(initialValue: container)
-            _service = State(initialValue: LinkService(context: ModelContext(container)))
+            _viewModel = State(initialValue: try LinkViewModelFactory.makePersistent())
         } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+            fatalError("Failed to bootstrap LinkViewModel: \(error)")
         }
     }
 
     var body: some Scene {
         WindowGroup {
             LinkView()
-                .environmentObject(LinkViewModel(service: service))
+                .environmentObject(viewModel)
         }
     }
 }

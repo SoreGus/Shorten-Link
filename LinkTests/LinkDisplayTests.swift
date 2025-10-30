@@ -312,3 +312,66 @@ struct LinkDisplayTests {
         }
     }
 }
+@MainActor
+extension LinkDisplayTests {
+    private func countStoredLinks(_ context: ModelContext) throws -> Int {
+        try context.fetch(FetchDescriptor<StoredLink>()).count
+    }
+    
+    @MainActor
+    private func waitUntil(
+        _ condition: @escaping () throws -> Bool,
+        timeout seconds: TimeInterval = 2.0,
+        poll interval: TimeInterval = 0.05
+    ) async throws {
+        let deadline = Date().addingTimeInterval(seconds)
+        while Date() < deadline {
+            if (try? condition()) == true { return }
+            try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+        }
+        _ = try? condition()
+    }
+}
+
+@MainActor
+extension LinkDisplayTests {
+    @Test("Stream: 404 notFound → deletes locally and emits no items")
+    func testStreamDeletesLocalRecordOnNotFoundAndEmitsNothing() async throws {
+        let (sut, context, mockID) = try makeSUT()
+
+        try await withMock(id: mockID, { request in
+            guard let url = request.url else { fatalError("No URL") }
+
+            if request.httpMethod == "GET",
+               url.absoluteString.contains("/api/alias/DEAD404") {
+                let resp = HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!
+                return (resp, Data())
+            }
+
+            let resp = HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!
+            return (resp, Data())
+        }) {
+            try await sut.save(link: Link(serverID: "DEAD404"))
+            #expect(try countStoredLinks(context) == 1)
+
+            var received: [DisplayLink] = []
+            do {
+                for try await item in sut.loadAllDisplayLinksStream() {
+                    received.append(item)
+                }
+            } catch {
+                Issue.record("Stream should not throw: \(error)")
+            }
+            #expect(received.isEmpty, "No emissions were expected for DEAD404")
+
+            try await waitUntil({
+                try self.countStoredLinks(context) == 0
+            }, timeout: 2.0, poll: 0.05)
+
+            #expect(
+                try countStoredLinks(context) == 0,
+                "The StoredLink with serverID=DEAD404 should have been deleted"
+            )
+        }
+    }
+}

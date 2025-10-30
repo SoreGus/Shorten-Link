@@ -79,8 +79,16 @@ extension LinkService: DisplayListProtocol {
                                     }
                                 }
 
+                            } catch let error as LinkServerAPIError {
+                                switch error {
+                                case .notFound:
+                                    Task {
+                                        try await self.delete(serverID: stored.serverID)
+                                    }
+                                default: break
+                                }
                             } catch {
-                                return
+                                
                             }
                         }
                     }
