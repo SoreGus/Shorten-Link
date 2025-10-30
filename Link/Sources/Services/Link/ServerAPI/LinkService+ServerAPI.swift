@@ -74,7 +74,7 @@ extension LinkService: LinkServerAPI {
     }
 
     @MainActor
-    public func load(serverID: String) async throws(LinkServerAPIError) -> Link {
+    public func load(serverID: String) async throws(LinkServerAPIError) -> DisplayLink {
         let allowed = serverID.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil
         guard allowed else { throw .invalidURL }
 
@@ -99,8 +99,13 @@ extension LinkService: LinkServerAPI {
         switch http.statusCode {
         case 200:
             do {
-                _ = try JSONDecoder().decode(LoadResponseBody.self, from: data)
-                return Link(serverID: serverID)
+                let response = try JSONDecoder().decode(LoadResponseBody.self, from: data)
+                return DisplayLink(
+                    link: .init(
+                        serverID: serverID
+                    ),
+                    url: response.url
+                )
             } catch {
                 throw .decodingFailed(underlying: error)
             }

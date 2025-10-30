@@ -19,5 +19,5 @@ enum LinkServerAPIError: Error, Sendable {
 
 protocol LinkServerAPI {
     func create(url: String) async throws(LinkServerAPIError) -> Link
-    func load(serverID: String) async throws(LinkServerAPIError) -> Link
+    func load(serverID: String) async throws(LinkServerAPIError) -> DisplayLink
 }

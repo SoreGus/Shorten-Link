@@ -2,32 +2,47 @@
 //  MockURLProtocol.swift
 //  Link
 //
-//  Created by Gustavo Soré on 29/10/25.
-//
 
 import Foundation
 
 final class MockURLProtocol: URLProtocol {
-    private static let lock = DispatchQueue(label: "MockURLProtocol.lock")
-    private static var _requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data?))?
 
-    static func set(_ handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data?)) {
-        lock.sync { _requestHandler = handler }
+    // MARK: - Routing por mockID
+
+    private static let headerKey = "X-Mock-ID"
+
+    private static var lock = NSLock()
+    private static var handlers: [String: (URLRequest) throws -> (HTTPURLResponse, Data?)] = [:]
+
+    static func set(_ id: String, _ handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data?)) {
+        lock.lock(); defer { lock.unlock() }
+        handlers[id] = handler
     }
 
-    static func clear() {
-        lock.sync { _requestHandler = nil }
+    static func clear(_ id: String) {
+        lock.lock(); defer { lock.unlock() }
+        handlers[id] = nil
     }
 
-    private static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data?))? {
-        lock.sync { _requestHandler }
+    private static func handler(for id: String) -> ((URLRequest) throws -> (HTTPURLResponse, Data?))? {
+        lock.lock(); defer { lock.unlock() }
+        return handlers[id]
     }
 
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    // MARK: - URLProtocol overrides
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.value(forHTTPHeaderField: headerKey) != nil
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest {
+        request
+    }
 
     override func startLoading() {
-        guard let handler = MockURLProtocol.handler else {
+        guard let id = request.value(forHTTPHeaderField: Self.headerKey),
+              let handler = Self.handler(for: id)
+        else {
             let url = request.url ?? URL(string: "about:blank")!
             let response = HTTPURLResponse(url: url, statusCode: 500, httpVersion: nil, headerFields: nil)!
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -35,6 +50,7 @@ final class MockURLProtocol: URLProtocol {
             client?.urlProtocolDidFinishLoading(self)
             return
         }
+
         do {
             let (response, data) = try handler(request)
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
