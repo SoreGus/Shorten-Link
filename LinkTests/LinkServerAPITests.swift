@@ -12,14 +12,12 @@ import SwiftData
 @Suite("LinkServerAPI (remote)")
 struct LinkServerAPITests {
 
-    // MARK: - Test Harness
-
     private func makeSUT() throws -> (sut: LinkService, context: ModelContext, mockID: String) {
         let mockID = UUID().uuidString
 
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [MockURLProtocol.self]
-        configuration.httpAdditionalHeaders = ["X-Mock-ID": mockID] // <- isola handler por teste
+        configuration.httpAdditionalHeaders = ["X-Mock-ID": mockID]
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
 
@@ -43,7 +41,6 @@ struct LinkServerAPITests {
         await Task.yield()
     }
 
-    // MARK: - Tests
 
     @Test("create returns Link on 201 with alias")
     func testCreateSuccess() async throws {

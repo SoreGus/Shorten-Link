@@ -19,12 +19,14 @@ public enum DisplayIcon: Sendable, Equatable {
 
 struct DisplayLink: Sendable {
     let link: Link
+    var title: String
     let url: String
     var icon: DisplayIcon?
     
     func withImage(
-        icon: DisplayIcon
+        icon: DisplayIcon,
+        title: String = "Title"
     ) -> Self {
-        return .init(link: link, url: url, icon: icon)
+        return .init(link: link, title: title, url: url, icon: icon)
     }
 }

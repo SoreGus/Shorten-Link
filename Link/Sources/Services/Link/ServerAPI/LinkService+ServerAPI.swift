@@ -102,6 +102,7 @@ extension LinkService: LinkServerAPI {
                     link: .init(
                         serverID: serverID
                     ),
+                    title: "Title",
                     url: response.url
                 )
             } catch {

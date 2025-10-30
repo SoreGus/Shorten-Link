@@ -75,8 +75,8 @@ struct LinkDisplayTests {
         return results
     }
 
-    @Test("Stream yields partial then platformImage when favicon succeeds")
-    func testStreamEmitsPartialThenPlatformImage() async throws {
+    @Test("Stream: partial → platformImage and title from og:title")
+    func testStreamEmitsPlatformImageAndOGTitle() async throws {
         let (sut, _, mockID) = try makeSUT()
 
         try await withMock(id: mockID, { request in
@@ -91,6 +91,17 @@ struct LinkDisplayTests {
                 return (resp, payload)
             }
 
+            if url.host == "example.com" {
+                let html = #"""
+                <html><head>
+                  <meta property="og:title" content="Example OG Title">
+                </head><body>...</body></html>
+                """#
+                let headers = ["Content-Type":"text/html; charset=utf-8"]
+                let resp = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: headers)!
+                return (resp, Data(html.utf8))
+            }
+
             if url.host == "t0.gstatic.com",
                url.path.contains("faviconV2") {
                 let headers = ["Content-Type":"image/png"]
@@ -103,9 +114,8 @@ struct LinkDisplayTests {
         }) {
             try await sut.save(link: Link(serverID: "A1B2C3"))
             await Task.yield()
-            let stored = try await sut.loadAll()
-            try #require(stored.count == 1)
-            let emissions = try await collectFirst(2, from: sut.loadAllDisplayLinksStream(), timeout: 5.0)
+
+            let emissions = try await collectFirst(2, from: sut.loadAllDisplayLinksStream())
             try #require(emissions.count == 2)
 
             switch emissions[0].icon {
@@ -117,11 +127,12 @@ struct LinkDisplayTests {
             case .platformImage: #expect(true)
             default: Issue.record("Second emission should have platformImage")
             }
+            #expect(emissions[1].title == "Example OG Title")
         }
     }
 
-    @Test("Stream yields only partial when favicon fails")
-    func testStreamEmitsOnlyPartialWhenFaviconFails() async throws {
+    @Test("Stream: favicon failed → placeholderSystemName and title from <title>")
+    func testStreamEmitsPlaceholderAndHTMLTitleWhenFaviconFails() async throws {
         let (sut, _, mockID) = try makeSUT()
 
         try await withMock(id: mockID, { request in
@@ -136,6 +147,15 @@ struct LinkDisplayTests {
                 return (resp, payload)
             }
 
+            if url.host == "noicon.example" {
+                let html = #"""
+                <html><head><title>NoIcon Page</title></head><body>...</body></html>
+                """#
+                let resp = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil,
+                                           headerFields: ["Content-Type":"text/html; charset=utf-8"])!
+                return (resp, Data(html.utf8))
+            }
+
             if url.host == "t0.gstatic.com",
                url.path.contains("faviconV2") {
                 let headers = ["Content-Type":"text/plain"]
@@ -148,28 +168,121 @@ struct LinkDisplayTests {
         }) {
             try await sut.save(link: Link(serverID: "ZZZ999"))
             await Task.yield()
-            let stored = try await sut.loadAll()
-            try #require(stored.count == 1)
-            let emissions = try await collectFirst(2, from: sut.loadAllDisplayLinksStream(), timeout: 5.0)
-            try #require(emissions.count >= 1)
+
+            let emissions = try await collectFirst(2, from: sut.loadAllDisplayLinksStream())
+            try #require(emissions.count == 2)
 
             switch emissions[0].icon {
             case .none: #expect(true)
             default: Issue.record("First emission should have icon == nil")
             }
 
-            if emissions.count > 1 {
-                switch emissions[1].icon {
-                case .platformImage:
-                    Issue.record("Should not have platformImage when favicon fails")
-                default:
-                    #expect(true)
-                }
+            switch emissions[1].icon {
+            case .placeholderSystemName(let name):
+                #expect(name == "globe")
+            default:
+                Issue.record("Second emission should have placeholderSystemName('globe')")
             }
+            #expect(emissions[1].title == "NoIcon Page")
         }
     }
 
-    @Test("Stream finishes when server resolution fails")
+    @Test("Stream: title fetch failed → fallback to URL string")
+    func testStreamFallsBackToURLStringWhenTitleFetchFails() async throws {
+        let (sut, _, mockID) = try makeSUT()
+
+        try await withMock(id: mockID, { request in
+            guard let url = request.url else { fatalError("No URL") }
+
+            if request.httpMethod == "GET",
+               url.absoluteString.contains("/api/alias/TITLE500") {
+                let payload = Data(#"""
+                {"url":"https://failtitle.example"}
+                """#.utf8)
+                let resp = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (resp, payload)
+            }
+
+            if url.host == "failtitle.example" {
+                let resp = HTTPURLResponse(url: url, statusCode: 500, httpVersion: nil, headerFields: nil)!
+                return (resp, Data())
+            }
+
+            if url.host == "t0.gstatic.com",
+               url.path.contains("faviconV2") {
+                let headers = ["Content-Type":"image/png"]
+                let resp = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: headers)!
+                return (resp, onePixelPNG)
+            }
+
+            let resp = HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!
+            return (resp, Data())
+        }) {
+            try await sut.save(link: Link(serverID: "TITLE500"))
+            await Task.yield()
+
+            let emissions = try await collectFirst(2, from: sut.loadAllDisplayLinksStream())
+            try #require(emissions.count == 2)
+
+            switch emissions[1].icon {
+            case .platformImage: #expect(true)
+            default: Issue.record("Should have loaded platformImage")
+            }
+
+            #expect(emissions[1].title == "https://failtitle.example")
+        }
+    }
+
+    @Test("Stream: invalid favicon MIME → placeholder")
+    func testStreamIgnoresFaviconWithInvalidMIME() async throws {
+        let (sut, _, mockID) = try makeSUT()
+
+        try await withMock(id: mockID, { request in
+            guard let url = request.url else { fatalError("No URL") }
+
+            if request.httpMethod == "GET",
+               url.absoluteString.contains("/api/alias/MIMEBAD") {
+                let payload = Data(#"""
+                {"url":"https://mimebad.example"}
+                """#.utf8)
+                let resp = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (resp, payload)
+            }
+
+            if url.host == "mimebad.example" {
+                let html = #"<html><head><title>MIME Bad</title></head><body/></html>"#
+                let resp = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil,
+                                           headerFields: ["Content-Type":"text/html; charset=utf-8"])!
+                return (resp, Data(html.utf8))
+            }
+
+            if url.host == "t0.gstatic.com",
+               url.path.contains("faviconV2") {
+                let headers = ["Content-Type":"application/json"]
+                let resp = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: headers)!
+                return (resp, Data(#"{"not":"image"}"#.utf8))
+            }
+
+            let resp = HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!
+            return (resp, Data())
+        }) {
+            try await sut.save(link: Link(serverID: "MIMEBAD"))
+            await Task.yield()
+
+            let emissions = try await collectFirst(2, from: sut.loadAllDisplayLinksStream())
+            try #require(emissions.count == 2)
+
+            switch emissions[1].icon {
+            case .placeholderSystemName(let name):
+                #expect(name == "globe")
+            default:
+                Issue.record("Should use placeholderSystemName('globe') when MIME is not image/*")
+            }
+            #expect(emissions[1].title == "MIME Bad")
+        }
+    }
+
+    @Test("Stream: finishes without emitting when server resolution fails")
     func testStreamFinishesWhenServerResolutionFails() async throws {
         let (sut, _, mockID) = try makeSUT()
 
@@ -179,12 +292,6 @@ struct LinkDisplayTests {
             if request.httpMethod == "GET",
                url.absoluteString.contains("/api/alias/FAIL001") {
                 let resp = HTTPURLResponse(url: url, statusCode: 500, httpVersion: nil, headerFields: nil)!
-                return (resp, Data())
-            }
-
-            if url.host == "t0.gstatic.com",
-               url.path.contains("faviconV2") {
-                let resp = HTTPURLResponse(url: url, statusCode: 404, httpVersion: nil, headerFields: nil)!
                 return (resp, Data())
             }
 

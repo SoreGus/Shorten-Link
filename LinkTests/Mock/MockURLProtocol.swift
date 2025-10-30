@@ -7,8 +7,6 @@ import Foundation
 
 final class MockURLProtocol: URLProtocol {
 
-    // MARK: - Routing por mockID
-
     private static let headerKey = "X-Mock-ID"
 
     private static var lock = NSLock()
@@ -28,8 +26,6 @@ final class MockURLProtocol: URLProtocol {
         lock.lock(); defer { lock.unlock() }
         return handlers[id]
     }
-
-    // MARK: - URLProtocol overrides
 
     override class func canInit(with request: URLRequest) -> Bool {
         request.value(forHTTPHeaderField: headerKey) != nil
