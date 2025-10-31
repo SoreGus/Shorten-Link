@@ -15,15 +15,18 @@ struct LinkRow: View {
                     .frame(width: 52, height: 52)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(RoundedRectangle(cornerRadius: 10).stroke(.quaternary, lineWidth: 0.5))
+                    .accessibilityIdentifier("link_row_icon")
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(displayLink.title)
                         .font(.headline)
                         .lineLimit(1)
+                        .accessibilityIdentifier("link_row_title")
                     Text(displayLink.url)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .accessibilityIdentifier("link_row_url")
                 }
 
                 Spacer(minLength: 16)

@@ -30,10 +30,12 @@ struct SearchResultBannerView: View {
             Text("Searching…")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier("search_result_searching_text")
             Spacer(minLength: 8)
             Button("Cancel") { viewModel.clearSearch() }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .accessibilityIdentifier("search_result_cancel_button")
         }
         .padding(14)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -47,7 +49,6 @@ struct SearchResultBannerView: View {
     private func resultRow(_ result: DisplayLink) -> some View {
         VStack(alignment: .leading, spacing: 12) {
 
-            // Linha 1 — Ícone + textos (mesma linha)
             HStack(alignment: .center, spacing: 12) {
                 IconView(icon: result.icon)
                     .frame(width: 28, height: 28)
@@ -56,25 +57,26 @@ struct SearchResultBannerView: View {
                         RoundedRectangle(cornerRadius: 6)
                             .stroke(Color.gray.opacity(0.2), lineWidth: 0.5)
                     )
+                    .accessibilityIdentifier("search_result_link_row_icon")
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(result.link.serverID)
                         .font(.headline)
                         .lineLimit(1)
+                        .accessibilityIdentifier("search_result_title_text")
                     Text(result.url)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .accessibilityIdentifier("search_result_url_text")
                 }
 
                 Spacer(minLength: 0)
             }
 
-            // Linha 2 — Save sozinho
             saveButton(for: result)
                 .frame(maxWidth: .infinity, alignment: .center)
 
-            // Linha 3 — Open e Clear distribuídos igualmente
             HStack(spacing: 10) {
                 Button {
                     if let url = URL(string: result.url) { openURL(url) }
@@ -83,6 +85,7 @@ struct SearchResultBannerView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("search_result_open_button")
 
                 Button(role: .cancel) {
                     viewModel.clearSearch()
@@ -92,6 +95,7 @@ struct SearchResultBannerView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(viewModel.isSavingSearchResult)
+                .accessibilityIdentifier("search_result_clear_button")
             }
             .padding(.top, 2)
         }
@@ -134,6 +138,7 @@ struct SearchResultBannerView: View {
         .buttonStyle(.borderedProminent)
         .controlSize(.regular)
         .disabled(alreadySaved || viewModel.isSavingSearchResult)
+        .accessibilityIdentifier("search_result_save_button")
     }
 }
 

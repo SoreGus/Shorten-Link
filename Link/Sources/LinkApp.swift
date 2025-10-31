@@ -8,11 +8,31 @@ import SwiftData
 
 @main
 struct LinkApp: App {
-    @State private var viewModel: LinkViewModel
+    @StateObject private var viewModel: LinkViewModel
+    private let interactor: LinkViewModelInteractor
 
     init() {
+        let args = ProcessInfo.processInfo.arguments
+        
+        let isUITesting = args.contains("-uiTesting")
+        let disableAnimations = args.contains("-disableAnimations")
+
+        if disableAnimations {
+            #if canImport(UIKit)
+            UIView.setAnimationsEnabled(false)
+            #endif
+            CATransaction.setDisableActions(true)
+        }
+
         do {
-            _viewModel = State(initialValue: try LinkViewModelFactory.makePersistent())
+            let vm: LinkViewModel
+            if isUITesting {
+                vm = try LinkViewModelFactory.makeInMemory()
+            } else {
+                vm = try LinkViewModelFactory.makePersistent()
+            }
+            _viewModel = StateObject(wrappedValue: vm)
+            interactor = LinkViewModelInteractor(viewModel: vm)
         } catch {
             fatalError("Failed to bootstrap LinkViewModel: \(error)")
         }
@@ -22,6 +42,9 @@ struct LinkApp: App {
         WindowGroup {
             LinkView()
                 .environmentObject(viewModel)
+                .onOpenURL { url in
+                    interactor.handle(url: url)
+                }
         }
     }
 }

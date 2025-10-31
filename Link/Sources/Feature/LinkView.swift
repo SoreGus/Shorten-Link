@@ -24,11 +24,7 @@ struct LinkView: View {
 
     var body: some View {
         Group {
-            if #available(iOS 16.0, macOS 13.0, *) {
-                NavigationStack { content }
-            } else {
-                NavigationView { content }
-            }
+            NavigationStack { content }
         }
         .onAppear { viewModel.loadAll() }
         .onChange(of: viewModel.errorMessage) { _, new in
@@ -58,39 +54,7 @@ struct LinkView: View {
                 }
             }
 
-            Section {
-                if viewModel.displayLinks.isEmpty {
-                    ContentUnavailableView(
-                        "No saved links",
-                        systemImage: "tray"
-                    )
-                    .frame(maxWidth: .infinity, alignment: .top)
-                    .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 16))
-                    .listRowSeparator(.hidden)
-                } else {
-                    ForEach(viewModel.displayLinks, id: \.link.serverID) { item in
-                        LinkRow(displayLink: item)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                if let url = URL(string: item.url) { openURL(url) }
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    Task { await viewModel.delete(serverID: item.link.serverID) }
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
-                    }
-                    .onDelete(perform: viewModel.delete(at:))
-                }
-            } header: {
-                Text("Saved Links")
-            } footer: {
-                Text("\(viewModel.displayLinks.count) item(s)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+            LinkSectionView()
         }
         .navigationTitle("Links")
         .toolbar {

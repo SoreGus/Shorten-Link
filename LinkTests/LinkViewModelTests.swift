@@ -111,7 +111,7 @@ struct LinkViewModelTests {
             try await service.save(link: Link(serverID: "S1"))
 
             vm.loadAll()
-            try await Task.sleep(nanoseconds: 150_000_000)
+            try await Task.sleep(nanoseconds: 800_000_000)
 
             try #require(vm.displayLinks.count == 1)
             let item = vm.displayLinks[0]

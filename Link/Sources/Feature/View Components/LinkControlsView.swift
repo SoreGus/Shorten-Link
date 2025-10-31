@@ -17,6 +17,7 @@ struct LinkControlsView: View {
                 .font(.headline)
                 .foregroundStyle(.primary)
                 .padding(.bottom, 2)
+                .accessibilityIdentifier("search-by-url-text")
 
             TextField("Paste a URL", text: $urlInput)
                 .textFieldStyle(.roundedBorder)
@@ -38,6 +39,7 @@ struct LinkControlsView: View {
                         .accessibilityLabel("Clear text")
                     }
                 }
+                .accessibilityIdentifier("paste-a-url-textfield")
 
             Button(action: submit) {
                 if viewModel.isSearching {
@@ -47,6 +49,7 @@ struct LinkControlsView: View {
                         Text("Searching…")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("button-searching-text")
                     }
                     .frame(maxWidth: .infinity)
                 } else {
@@ -55,6 +58,7 @@ struct LinkControlsView: View {
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle( .white)
                         .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier("button-search-label")
                 }
             }
             .buttonStyle(.borderedProminent)
@@ -62,6 +66,7 @@ struct LinkControlsView: View {
             .disabled(!viewModel.isValidURLForSearch(urlInput)
                       || viewModel.isSearching
                       || viewModel.isSavingSearchResult)
+            .accessibilityIdentifier("search-button")
         }
         .padding(16)
         .background(
