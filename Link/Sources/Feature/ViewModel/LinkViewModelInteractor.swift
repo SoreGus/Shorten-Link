@@ -2,8 +2,6 @@
 //  LinkViewModelInteractor.swift
 //  Link
 //
-//  Created by Gustavo Soré on 31/10/25.
-//
 
 import Foundation
 

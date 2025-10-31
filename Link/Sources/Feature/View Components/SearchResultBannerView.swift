@@ -22,8 +22,6 @@ struct SearchResultBannerView: View {
         .animation(.easeInOut, value: viewModel.searchResult != nil)
     }
 
-    // MARK: - Searching
-
     private var searchingRow: some View {
         HStack(spacing: 10) {
             ProgressView().controlSize(.small)
@@ -43,8 +41,6 @@ struct SearchResultBannerView: View {
         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
         .listRowSeparator(.hidden)
     }
-
-    // MARK: - Result
 
     private func resultRow(_ result: DisplayLink) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -106,8 +102,6 @@ struct SearchResultBannerView: View {
         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
         .listRowSeparator(.hidden)
     }
-
-    // MARK: - Components
 
     private func saveButton(for result: DisplayLink) -> some View {
         let alreadySaved = viewModel.displayLinks.contains { $0.link.serverID == result.link.serverID }
